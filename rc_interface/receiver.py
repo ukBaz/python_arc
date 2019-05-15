@@ -1,51 +1,64 @@
 import logging
 from time import sleep
-import Adafruit_PCA9685
+import platform
+# Import depends on which board is being used
+try:
+    import Adafruit_PCA9685
+except ImportError:
+    pass
+try:
+    import mraa_pca9685
+except ImportError:
+    pass
 
 """
 This will allow you to interface to the normal inputs to an RC car.
 There is the speed controller (ESC) and the steering servo
 """
 FREQ = 60
-
+board = platform.machine()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
 class PCA9865:
-        def __init__(self, channel, min, mid, max):
-            # ESC stands for Electronic Speed Control
-            self.channel = channel
+    def __init__(self, channel, min, mid, max):
+        # ESC stands for Electronic Speed Control
+        self.channel = channel
+        if board == 'aarch64':
+            print('Setting up for Dragonboard')
+            self.pwm = mraa_pca9685.PCA9685()
+        else:
             self.pwm = Adafruit_PCA9685.PCA9685()
-            self.pwm.set_pwm_freq(FREQ)
-            self.min_value = -1
-            self.max_value = 1
-            self.max_pwm = max
-            self.min_pwm = min
+        self.pwm.set_pwm_freq(FREQ)
+        self.min_value = -1
+        self.max_value = 1
+        self.max_pwm = max
+        self.min_pwm = min
 
-        def __enter__(self):
-            return self
+    def __enter__(self):
+        return self
 
-        def __del__(self):
-            self.stop()
+    def __del__(self):
+        self.stop()
 
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.stop()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
 
-        def stop(self):
-            self.set(0)
+    def stop(self):
+        self.set(0)
 
-        def set(self, value):
-            pwm_value = self.map_value(value)
-            self.pwm.set_pwm(self.channel, 0, pwm_value)
+    def set(self, value):
+        pwm_value = self.map_value(value)
+        self.pwm.set_pwm(self.channel, 0, pwm_value)
 
-        def map_value(self, value):
-            input_range = self.max_value - self.min_value
-            output_range = self.max_pwm - self.min_pwm
-            input_percentage = (value - self.min_value) / input_range
-            output_value = (output_range * input_percentage) + self.min_pwm
-            logger.debug('Input: {} - Output: {}', value, output_value)
-            return int(output_value)
+    def map_value(self, value):
+        input_range = self.max_value - self.min_value
+        output_range = self.max_pwm - self.min_pwm
+        input_percentage = (value - self.min_value) / input_range
+        output_value = (output_range * input_percentage) + self.min_pwm
+        logger.debug('Input: {} - Output: {}', value, output_value)
+        return int(output_value)
 
 
 class SpeedController:

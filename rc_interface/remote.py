@@ -5,21 +5,26 @@ import evdev
 
 # For testing
 # python3 -m evdev.evtest
+red = ['40:1B:5F:8E:BF:2A', '/org/bluez/hci0/dev_40_1B_5F_8E_BF_2A']
+blue = ['DC:0C:2D:20:DA:E8', '/org/bluez/hci0/dev_DC_0C_2D_20_DA_E8']
+my_dev = blue
 
 
 class Controller:
+
     def __init__(self, adapter_int=0):
         adapter_path = '/org/bluez/hci{}'.format(adapter_int)
         self.dbus = SystemBus()
         self.adapter = self.dbus.get('org.bluez', adapter_path)
-        self.controller = self.dbus.get('org.bluez', '/org/bluez/hci0/dev_DC_0C_2D_20_DA_E8')
-        print('Waiting for connection from DC:0C:2D:20:DA:E8')
+        self.controller = self.dbus.get('org.bluez',
+                                        my_dev[1])
+        print('Waiting for connection from', my_dev[0])
         self.controller.Connect()
         while not self.controller.Connected:
             sleep(1)
         print('Connected')
         sleep(2)
-        self.device = evdev.InputDevice('/dev/input/event2')
+        self.device = evdev.InputDevice('/dev/input/event1')
         self.max_value = 0
         self.min_value = 255
         self.max_throttle = 1
@@ -67,4 +72,5 @@ class Controller:
 
 if __name__ == '__main__':
     ctrl = Controller()
-    ctrl.get_events()
+    for speed, steer, action in ctrl.get_events():
+        print(speed, steer, action)
